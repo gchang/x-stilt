@@ -39,12 +39,20 @@
 # ---------------------------------------------------------------------------
 
 # !!!! to run this code in R session: source('run_xstilt.r')
+# !!!! or without editing it, from a shell, e.g.:
+#   Rscript run_xstilt.r xstilt_wd=$PWD site=Toronto site_lon=-79.38 site_lat=43.65 \
+#     store_path=out met_path=gfs0p25
+# optional key=value words: xstilt_wd, site, site_lon, site_lat, input_path, 
+# store_path, recp_fn, met_path; settings not given keep the values below
 options(timeout = max(1500, getOption('timeout')))   # for download.file
+args = commandArgs(trailingOnly = TRUE)
+opts = setNames(sub('^[^=]*=', '', args), sub('=.*$', '', args))
+opt = function(name, default) if (name %in% names(opts)) opts[[name]] else default
 
 # ----------- Dependencies and API key for geolocation (must-have) ---------- #
 ## go to X-STILT dir and source functions and libraries
 homedir = '/central/home/dienwu'
-xstilt_wd = file.path(homedir, 'X-STILT') 
+xstilt_wd = opt('xstilt_wd', file.path(homedir, 'X-STILT'))
 setwd(xstilt_wd); source('r/dependencies.r')
 
 # Please insert your API in the 'insert_ggAPI.csv' for use of ggplot and ggmap
@@ -52,8 +60,9 @@ setwd(xstilt_wd); source('r/dependencies.r')
 api.key = readLines('insert_ggAPI.csv')
 
 # --------------------- Site location params (must-have) --------------------- #
-cat('Enter your site name: ')
-site = readLines('stdin', n = 1); print(site)
+site = opt('site', NA)
+if (is.na(site)) { cat('Enter your site name: '); site = readLines('stdin', n = 1) }
+print(site)
 
 # define entire- and near-field domain (usually for high observations)
 # for selecting observations, if num_* is not NA
@@ -66,13 +75,18 @@ nf_dlat = 0.3
 
 # - automatically obtain lat/lon (requires Google API key in insert_ggAPI.csv)
 # - OR mannually insert coordinates, e.g., site.loc = data.frame(lon = , lat = )
-lon_lat = get.lon.lat(site, dlon, dlat, site.loc = NULL)
+# - OR give site_lon= and site_lat= (no Google API key needed then)
+site.loc = NULL
+if (all(c('site_lon', 'site_lat') %in% names(opts)))
+  site.loc = data.frame(lon = as.numeric(opts[['site_lon']]), 
+                        lat = as.numeric(opts[['site_lat']]))
+lon_lat = get.lon.lat(site, dlon, dlat, site.loc = site.loc)
 
 
 # ------------------------ I/O params (must-have) --------------------------- #
 # as a default, all input data are stored under input_path, change if you like
-input_path  = '/central/groups/POW'
-store_path  = file.path(input_path, 'XSTILT_output', site)
+input_path  = opt('input_path', '/central/groups/POW')
+store_path  = opt('store_path', file.path(input_path, 'XSTILT_output', site))
 
 # *** modify the info path/directory that stores OCO-2/3 or TROPOMI data -------
 obs_sensor  = c('OCO-2', 'OCO-3', 'TROPOMI', NA)[4]
@@ -81,7 +95,7 @@ obs_species = c('CO2', 'CO', 'NO2', 'CH4')[1]  # only 1 gas per run
 oco_path = file.path(input_path, obs_sensor, paste0('L2_Lite_FP_', obs_ver))
 sif_path = file.path(input_path, obs_sensor, paste0('L2_Lite_SIF_', obs_ver))
 trp_path = file.path(input_path, obs_sensor, obs_species, 'L2')
-store_path = file.path(input_path, 'XSTILT_output', site)
+store_path = opt('store_path', file.path(input_path, 'XSTILT_output', site))
 if (!is.na(obs_ver)) store_path = file.path(store_path, obs_ver)
 
 
@@ -91,7 +105,7 @@ if (!is.na(obs_ver)) store_path = file.path(store_path, obs_ver)
 # one can also include a third column for receptor time ('time') OR enter the 
 # receptor time to `timestr` below. Each column needs to be separated by comma. 
 if (is.na(obs_sensor)) {   # X-simulations WOUT satellite data
-  recp_fn = 'receptor_demo.csv'                               # <path/filename>
+  recp_fn = opt('recp_fn', 'receptor_demo.csv')              # <path/filename>
   obs_ver = obs_path = sif_path = NA
 } else {                   # X-simulations WITH satellite data
   recp_fn = NA
@@ -173,7 +187,7 @@ num_bg_lat = num_bg_lon = num_nf_lat = num_nf_lon = NA
 # see STILTv2 https://uataq.github.io/stilt/#/configuration?id=meteorological-data-input
 met = c('gfs0p25', 'hrrr', 'wrf27km')[1]            # choose met fields
 met_file_tres = c('1 day', '6 hours', '1 hour')[1]  # met temporal resolution
-met_path = file.path(homedir, met)     
+met_path = opt('met_path', file.path(homedir, met))
 met_file_format = '%Y%m%d'                          # met file name convention
 
 #' if you prefer to use your own metfields without downloading files from ARL, 
