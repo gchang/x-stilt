@@ -43,7 +43,8 @@
 #   Rscript run_xstilt.r xstilt_wd=$PWD site=Toronto site_lon=-79.38 site_lat=43.65 \
 #     store_path=out met_path=gfs0p25
 # optional key=value words: xstilt_wd, site, site_lon, site_lat, input_path, 
-# store_path, recp_fn, met_path; settings not given keep the values below
+# store_path, recp_fn, met_path, slurm (T/F), n_cores (without SLURM); 
+# settings not given keep the values below
 options(timeout = max(1500, getOption('timeout')))   # for download.file
 args = commandArgs(trailingOnly = TRUE)
 opts = setNames(sub('^[^=]*=', '', args), sub('=.*$', '', args))
@@ -273,10 +274,11 @@ if (run_emiss_err) {
 # *** there is a current bug with the rslurm package, you may need to 
 # mannually pull the development version from github by doing:
 #devtools::install_github('SESYNC-ci/rslurm')               # DW, 11/6/2020
-slurm = T                           # T: SLURM parallel computing
+slurm = as.logical(opt('slurm', 'T'))  # T: SLURM parallel computing
 n_nodes = 12
 n_cores = 10
-if (!slurm) n_nodes = n_cores = 1
+# without SLURM, n_cores= sets the worker processes on this machine (default 1)
+if (!slurm) { n_nodes = 1; n_cores = as.integer(opt('n_cores', 1)) }
 timeout = 12 * 60 * 60              # time allowed before terminations in sec
 job_time = '12:00:00'               # total job time
 slurm_account = 'pow'
