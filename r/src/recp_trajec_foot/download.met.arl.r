@@ -7,6 +7,12 @@ download.met.arl = function(timestr, met_file_format, nhrs, met_path,
                             met_file_tres = c('1 hour', '6 hours', '1 day')[2], 
                             run_trajec = F, n_met_min = NA, selfTF = FALSE) {
 
+    # receptors can need different numbers of met files (a 12 UTC receptor 12 hours
+    # back needs one daily GFS file, a 00 UTC one needs two), so keep each count and
+    # return the smallest; every receptor's own files are downloaded below
+    n_met_user = n_met_min
+    n_met_need = NULL
+
     # quickly check if met fields exist 
     for (tmp_timestr in timestr) {
         
@@ -32,7 +38,8 @@ download.met.arl = function(timestr, met_file_format, nhrs, met_path,
             t_bound = seq(min(t_dys), max(t_dys), by = met_file_tres)
             t_find_time = unique(t_bound[findInterval(t_hrs, t_bound)])
             t_met = strftime(t_find_time, format = arl_format, tz = 'GMT')
-            if (is.na(n_met_min)) n_met_min = length(t_met)
+            if (is.na(n_met_user)) n_met_min = length(t_met)
+            n_met_need = c(n_met_need, n_met_min)
             met_fns = do.call(c, lapply(t_met, 
                                     function(x) met_fns[grepl(x, met_fns)] ))
         }   # end if for downloading files from ARL
@@ -78,5 +85,6 @@ download.met.arl = function(timestr, met_file_format, nhrs, met_path,
         print(met_fns)
     }
 
+    if (!is.null(n_met_need)) n_met_min = min(n_met_need)
     return(n_met_min)
 }

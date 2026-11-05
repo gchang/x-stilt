@@ -21,6 +21,10 @@ Results do not change.
 
 `slurm = T` was fixed in the script, and `slurm = F` forced one core (`n_nodes = n_cores = 1`), so without SLURM the receptors ran one after another. `slurm=F` on the command line now runs them on this machine, and `n_cores=` sets how many worker processes `xstilt_apply()` forks for them (its existing single-node branch). SLURM stays the default, and `slurm = F` without `n_cores` still means one process. Results do not change.
 
+## 2026-11-05: every receptor gets its own met-file count
+
+`download.met.arl()` (`r/src/recp_trajec_foot/download.met.arl.r`) set `n_met_min`, the number of met files a receptor must find before STILT runs it, from the first receptor only, and `run_xstilt.r` passes that one number to every receptor. In `receptor_demo.csv` the first receptor (2024-09-12 00 UTC, 12 hours back) needs two daily GFS files, while the 2024-09-12 12 UTC receptor needs only one, so STILT skipped it with "Insufficient number of meteorological files found" in its `stilt.log`, and the run still finished without error. The function now counts the files for each receptor, downloads what each one is missing as before, and returns the smallest count. With the four demo receptors the old code gave 2 and skipped one receptor; it now gives 1 and runs all four. Footprints of the receptors that already ran do not change.
+
 ## Check
 
 On 2026-11-05, Linux x86-64, R 4.4.3 with conda-forge packages (dplyr 1.2.1, ncdf4 1.24, raster 3.6.32, ggmap 4.0.2, rworldmap 1.3.8, lutz 0.3.2, rslurm 0.6.2, R.utils 2.13.0, proj4 1.0.15, gfortran for STILT's `permute.so`), with no network, GFS 0.25 degree met for 2024-09-11 and 2024-09-12 downloaded beforehand from `ftp://arlftp.arlhq.noaa.gov/archives/gfs0p25/` (2.9 GB each), and a receptor file holding the first receptor of `receptor_demo.csv` (Toronto, 2024-09-12 00 UTC):
